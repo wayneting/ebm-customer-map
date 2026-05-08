@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EBM 客戶市場地圖</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+–bg: #080d18;
+–surface: #0f1923;
+–surface2: #162030;
+–border: #1e3048;
+–accent: #0e6b7a;
+–accent2: #14b8a6;
+–text: #e2e8f0;
+–text-dim: #5a7a9a;
+–c-center: #ef4444;
+–c-region: #f97316;
+–c-district: #eab308;
+–c-clinic: #3b82f6;
+–c-deployed: #22c55e;
+–c-talking: #f97316;
+–c-potential: #64748b;
+}
+
+- { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Noto Sans TC’, sans-serif;
+height: 100vh;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+}
+
+/* ── Header ── */
+.header {
+background: var(–surface);
+border-bottom: 1px solid var(–border);
+padding: 0 20px;
+height: 52px;
+display: flex;
+align-items: center;
+gap: 16px;
+flex-shrink: 0;
+z-index: 100;
+}
+
+.logo {
+font-size: 15px;
+font-weight: 700;
+color: var(–accent2);
+letter-spacing: -0.3px;
+white-space: nowrap;
+}
+
+.logo span { color: var(–text-dim); font-weight: 300; }
+
+.header-divider {
+width: 1px;
+height: 24px;
+background: var(–border);
+}
+
+.filter-row {
+display: flex;
+align-items: center;
+gap: 8px;
+flex: 1;
+overflow-x: auto;
+scrollbar-width: none;
+}
+
+.filter-row::-webkit-scrollbar { display: none; }
+
+.filter-label {
+font-size: 11px;
+color: var(–text-dim);
+white-space: nowrap;
+}
+
+.filter-btn {
+display: inline-flex;
+align-items: center;
+gap: 5px;
+padding: 4px 10px;
+border-radius: 6px;
+border: 1px solid var(–border);
+background: transparent;
+color: var(–text-dim);
+font-size: 12px;
+font-family: ‘Noto Sans TC’, sans-serif;
+cursor: pointer;
+white-space: nowrap;
+transition: all 0.15s;
+}
+
+.filter-btn .dot {
+width: 7px;
+height: 7px;
+border-radius: 50%;
+}
+
+.filter-btn.active {
+border-color: var(–accent2);
+color: var(–accent2);
+background: rgba(20, 184, 166, 0.08);
+}
+
+.filter-btn:hover { border-color: var(–accent2); color: var(–text); }
+
+.mode-btn {
+display: inline-flex;
+align-items: center;
+gap: 5px;
+padding: 4px 10px;
+border-radius: 6px;
+border: 1px solid var(–border);
+background: transparent;
+color: var(–text-dim);
+font-size: 12px;
+font-family: ‘Noto Sans TC’, sans-serif;
+cursor: pointer;
+transition: all 0.15s;
+white-space: nowrap;
+}
+
+.mode-btn.active {
+background: var(–accent);
+border-color: var(–accent);
+color: white;
+}
+
+.stats-pill {
+margin-left: auto;
+display: flex;
+align-items: center;
+gap: 12px;
+flex-shrink: 0;
+}
+
+.stat-item {
+text-align: center;
+}
+
+.stat-num {
+font-size: 16px;
+font-weight: 700;
+font-family: ‘JetBrains Mono’, monospace;
+color: var(–accent2);
+line-height: 1;
+}
+
+.stat-lbl {
+font-size: 9px;
+color: var(–text-dim);
+margin-top: 1px;
+}
+
+/* ── Layout ── */
+.main {
+display: flex;
+flex: 1;
+overflow: hidden;
+}
+
+/* ── Map ── */
+#map {
+flex: 1;
+height: 100%;
+}
+
+/* ── Side Panel ── */
+.side {
+width: 300px;
+background: var(–surface);
+border-left: 1px solid var(–border);
+display: flex;
+flex-direction: column;
+overflow: hidden;
+flex-shrink: 0;
+}
+
+.side-header {
+padding: 14px 16px;
+border-bottom: 1px solid var(–border);
+font-size: 12px;
+font-weight: 600;
+color: var(–text-dim);
+text-transform: uppercase;
+letter-spacing: 0.8px;
+}
+
+.side-list {
+flex: 1;
+overflow-y: auto;
+padding: 8px;
+}
+
+.side-list::-webkit-scrollbar { width: 3px; }
+.side-list::-webkit-scrollbar-track { background: transparent; }
+.side-list::-webkit-scrollbar-thumb { background: var(–border); border-radius: 2px; }
+
+.hosp-card {
+padding: 10px 12px;
+border-radius: 8px;
+border: 1px solid transparent;
+cursor: pointer;
+margin-bottom: 4px;
+transition: all 0.15s;
+}
+
+.hosp-card:hover {
+background: var(–surface2);
+border-color: var(–border);
+}
+
+.hosp-card.selected {
+background: rgba(14, 107, 122, 0.12);
+border-color: var(–accent);
+}
+
+.hosp-card-top {
+display: flex;
+align-items: flex-start;
+gap: 8px;
+}
+
+.hosp-level-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+flex-shrink: 0;
+margin-top: 5px;
+}
+
+.hosp-name {
+font-size: 13px;
+font-weight: 500;
+color: var(–text);
+line-height: 1.4;
+flex: 1;
+}
+
+.hosp-meta {
+display: flex;
+align-items: center;
+gap: 6px;
+margin-top: 5px;
+padding-left: 16px;
+}
+
+.tag-sm {
+padding: 1px 6px;
+border-radius: 3px;
+font-size: 10px;
+font-weight: 600;
+}
+
+.hosp-city {
+font-size: 11px;
+color: var(–text-dim);
+}
+
+/* ── Info Panel ── */
+.info-panel {
+border-top: 1px solid var(–border);
+padding: 16px;
+background: var(–surface2);
+min-height: 160px;
+max-height: 200px;
+overflow-y: auto;
+}
+
+.info-panel.empty {
+display: flex;
+align-items: center;
+justify-content: center;
+color: var(–text-dim);
+font-size: 12px;
+}
+
+.info-name {
+font-size: 14px;
+font-weight: 700;
+color: var(–text);
+margin-bottom: 10px;
+line-height: 1.4;
+}
+
+.info-row {
+display: flex;
+gap: 8px;
+margin-bottom: 6px;
+font-size: 12px;
+}
+
+.info-key {
+color: var(–text-dim);
+width: 52px;
+flex-shrink: 0;
+}
+
+.info-val {
+color: var(–text);
+flex: 1;
+line-height: 1.5;
+}
+
+.info-val a {
+color: var(–accent2);
+text-decoration: none;
+}
+
+.info-val a:hover { text-decoration: underline; }
+
+/* ── Legend ── */
+.legend {
+padding: 12px 16px;
+border-top: 1px solid var(–border);
+}
+
+.legend-title {
+font-size: 10px;
+color: var(–text-dim);
+text-transform: uppercase;
+letter-spacing: 0.8px;
+margin-bottom: 8px;
+}
+
+.legend-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 5px;
+}
+
+.legend-item {
+display: flex;
+align-items: center;
+gap: 6px;
+font-size: 11px;
+color: var(–text-dim);
+}
+
+.legend-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+flex-shrink: 0;
+}
+
+/* ── Loading ── */
+.loading-overlay {
+position: fixed;
+inset: 0;
+background: var(–bg);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+z-index: 9999;
+transition: opacity 0.4s;
+}
+
+.loading-overlay.hidden {
+opacity: 0;
+pointer-events: none;
+}
+
+.loading-logo {
+font-size: 24px;
+font-weight: 700;
+color: var(–accent2);
+margin-bottom: 24px;
+}
+
+.loading-bar {
+width: 200px;
+height: 2px;
+background: var(–border);
+border-radius: 1px;
+overflow: hidden;
+}
+
+.loading-bar-fill {
+height: 100%;
+background: linear-gradient(90deg, var(–accent), var(–accent2));
+border-radius: 1px;
+animation: loadBar 1.5s ease-in-out forwards;
+}
+
+@keyframes loadBar {
+0% { width: 0%; }
+60% { width: 80%; }
+100% { width: 100%; }
+}
+
+.loading-text {
+margin-top: 12px;
+font-size: 12px;
+color: var(–text-dim);
+}
+
+/* Google Maps 深色樣式覆蓋 */
+.gm-style .gm-style-iw-c {
+background: var(–surface) !important;
+border: 1px solid var(–border) !important;
+border-radius: 10px !important;
+padding: 0 !important;
+box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+
+.gm-style .gm-style-iw-d {
+overflow: hidden !important;
+}
+
+.gm-style .gm-style-iw-tc::after {
+background: var(–surface) !important;
+}
+
+.gm-style-iw button[title=“關閉”] {
+top: 4px !important;
+right: 4px !important;
+}
+
+.iw-content {
+padding: 14px 16px;
+min-width: 220px;
+}
+
+.iw-name {
+font-size: 14px;
+font-weight: 700;
+color: #e2e8f0;
+margin-bottom: 8px;
+font-family: ‘Noto Sans TC’, sans-serif;
+}
+
+.iw-row {
+font-size: 12px;
+color: #5a7a9a;
+margin-bottom: 4px;
+font-family: ‘Noto Sans TC’, sans-serif;
+}
+
+.iw-row span { color: #94a3b8; margin-left: 4px; }
+
+.iw-status {
+display: inline-block;
+padding: 2px 8px;
+border-radius: 4px;
+font-size: 11px;
+font-weight: 600;
+margin-top: 6px;
+font-family: ‘Noto Sans TC’, sans-serif;
+}
+</style>
+
+</head>
+<body>
+
+<!-- Loading -->
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-logo">🏥 EBM 客戶地圖</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  <div class="loading-text" id="loadingText">載入醫院資料中...</div>
+</div>
+
+<!-- Header -->
+
+<div class="header">
+  <div class="logo">EBM <span>/</span> 客戶市場地圖</div>
+  <div class="header-divider"></div>
+
+  <div class="filter-row">
+    <div class="filter-label">層級</div>
+    <button class="filter-btn active" onclick="filterLevel('all')" id="btn-all">全部</button>
+    <button class="filter-btn" onclick="filterLevel('醫學中心')" id="btn-center">
+      <span class="dot" style="background:var(--c-center)"></span>醫學中心
+    </button>
+    <button class="filter-btn" onclick="filterLevel('區域醫院')" id="btn-region">
+      <span class="dot" style="background:var(--c-region)"></span>區域醫院
+    </button>
+    <button class="filter-btn" onclick="filterLevel('地區醫院')" id="btn-district">
+      <span class="dot" style="background:var(--c-district)"></span>地區醫院
+    </button>
+
+```
+<div class="header-divider"></div>
+<div class="filter-label">模式</div>
+<button class="mode-btn active" onclick="setMode('marker')" id="mode-marker">📍 標記</button>
+<button class="mode-btn" onclick="setMode('heat')" id="mode-heat">🔥 熱力圖</button>
+```
+
+  </div>
+
+  <div class="stats-pill">
+    <div class="stat-item">
+      <div class="stat-num" id="stat-total">22</div>
+      <div class="stat-lbl">顯示中</div>
+    </div>
+    <div class="header-divider"></div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-deployed" style="color:#22c55e">0</div>
+      <div class="stat-lbl">已部署</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+
+<div class="main">
+  <div id="map"></div>
+
+  <!-- Side Panel -->
+
+  <div class="side">
+    <div class="side-header">醫院列表 <span id="list-count" style="color:var(--accent2); margin-left:6px; font-family:'JetBrains Mono',monospace"></span></div>
+    <div class="side-list" id="sideList"></div>
+
+```
+<div class="info-panel empty" id="infoPanel">
+  點擊地圖標記查看詳情
+</div>
+
+<div class="legend">
+  <div class="legend-title">醫院層級</div>
+  <div class="legend-grid">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-center)"></div>醫學中心</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-region)"></div>區域醫院</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-district)"></div>地區醫院</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-clinic)"></div>診所/衛生所</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-deployed)"></div>已部署</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-talking)"></div>洽談中</div>
+  </div>
+</div>
+```
+
+  </div>
+</div>
+
+<script>
+// ── 資料（從 Notion 同步，可由 GAS 定期更新此段）──
+// NOTION_SYNC_TIMESTAMP: 2026-05-08T10:00:00+08:00
+const HOSPITALS = [
+  { name:'臺大醫院', level:'醫學中心', city:'台北市', address:'台北市中正區中山南路7號', phone:'02-23123456', website:'https://www.ntuh.gov.tw', status:'潛在客戶', lat:25.0416, lng:121.5168 },
+  { name:'臺北榮民總醫院', level:'醫學中心', city:'台北市', address:'台北市北投區石牌路二段201號', phone:'02-28712121', website:'https://www.vghtpe.gov.tw', status:'潛在客戶', lat:25.1127, lng:121.5148 },
+  { name:'臺北醫學大學附設醫院', level:'醫學中心', city:'台北市', address:'台北市信義區吳興街252號', phone:'02-27372181', website:'https://www.tmuh.org.tw', status:'潛在客戶', lat:25.0280, lng:121.5640 },
+  { name:'三軍總醫院', level:'醫學中心', city:'台北市', address:'台北市內湖區成功路二段325號', phone:'02-87927000', website:'https://www.tsgh.ndmctsgh.edu.tw', status:'潛在客戶', lat:25.0693, lng:121.5897 },
+  { name:'馬偕紀念醫院（台北）', level:'醫學中心', city:'台北市', address:'台北市中山區中山北路二段92號', phone:'02-25433535', website:'https://www.mmh.org.tw', status:'潛在客戶', lat:25.0566, lng:121.5228 },
+  { name:'國泰綜合醫院', level:'醫學中心', city:'台北市', address:'台北市大安區仁愛路四段280號', phone:'02-27082121', website:'https://www.cgh.org.tw', status:'潛在客戶', lat:25.0360, lng:121.5512 },
+  { name:'新光吳火獅紀念醫院', level:'醫學中心', city:'台北市', address:'台北市士林區文昌路95號', phone:'02-28332211', website:'https://www.skh.org.tw', status:'潛在客戶', lat:25.0928, lng:121.5189 },
+  { name:'亞東紀念醫院', level:'醫學中心', city:'新北市', address:'新北市板橋區南雅南路二段21號', phone:'02-89667000', website:'https://www.femh.org.tw', status:'潛在客戶', lat:25.0022, lng:121.4636 },
+  { name:'台北慈濟醫院', level:'醫學中心', city:'新北市', address:'新北市新店區建國路289號', phone:'02-66289779', website:'https://www.taiwanhospital.org.tw', status:'潛在客戶', lat:24.9618, lng:121.5396 },
+  { name:'長庚紀念醫院（林口）', level:'醫學中心', city:'桃園市', address:'桃園市龜山區復興街5號', phone:'03-3281200', website:'https://www.cgmh.org.tw', status:'潛在客戶', lat:25.0490, lng:121.3509 },
+  { name:'林口長庚紀念醫院（兒童）', level:'醫學中心', city:'桃園市', address:'桃園市龜山區復興街5號', phone:'03-3281200', website:'https://www.cgmh.org.tw', status:'潛在客戶', lat:25.0495, lng:121.3515 },
+  { name:'臺中榮民總醫院', level:'醫學中心', city:'台中市', address:'台中市西屯區台灣大道四段1650號', phone:'04-23592525', website:'https://www.vghtc.gov.tw', status:'潛在客戶', lat:24.1717, lng:120.6412 },
+  { name:'中國醫藥大學附設醫院', level:'醫學中心', city:'台中市', address:'台中市北區育德路2號', phone:'04-22052121', website:'https://www.cmuh.cmu.edu.tw', status:'潛在客戶', lat:24.1499, lng:120.6847 },
+  { name:'臺中中山醫學大學附設醫院', level:'醫學中心', city:'台中市', address:'台中市南區建國北路一段110號', phone:'04-24739595', website:'https://www.csh.org.tw', status:'潛在客戶', lat:24.1351, lng:120.6742 },
+  { name:'彰化基督教醫院', level:'醫學中心', city:'彰化縣', address:'彰化市南校街135號', phone:'04-7238595', website:'https://www.cch.org.tw', status:'潛在客戶', lat:24.0818, lng:120.5378 },
+  { name:'成大醫院', level:'醫學中心', city:'台南市', address:'台南市北區勝利路138號', phone:'06-2353535', website:'https://www.hosp.ncku.edu.tw', status:'潛在客戶', lat:22.9997, lng:120.2122 },
+  { name:'奇美醫院（柳營）', level:'醫學中心', city:'台南市', address:'台南市柳營區太康里201號', phone:'06-6226999', website:'https://www.chimei.org.tw', status:'潛在客戶', lat:23.1863, lng:120.3641 },
+  { name:'高雄醫學大學附設中和紀念醫院', level:'醫學中心', city:'高雄市', address:'高雄市三民區自由一路100號', phone:'07-3121101', website:'https://www.kmuh.org.tw', status:'潛在客戶', lat:22.6506, lng:120.3098 },
+  { name:'高雄榮民總醫院', level:'醫學中心', city:'高雄市', address:'高雄市左營區大中一路386號', phone:'07-3422121', website:'https://www.vghks.gov.tw', status:'潛在客戶', lat:22.6894, lng:120.2966 },
+  { name:'高雄長庚紀念醫院', level:'醫學中心', city:'高雄市', address:'高雄市鳥松區大埤路123號', phone:'07-7317123', website:'https://www.cgmh.org.tw', status:'潛在客戶', lat:22.6712, lng:120.3847 },
+  { name:'義大醫院', level:'醫學中心', city:'高雄市', address:'高雄市燕巢區義大路1號', phone:'07-6150011', website:'https://www.edah.org.tw', status:'潛在客戶', lat:22.7197, lng:120.3669 },
+  { name:'花蓮慈濟醫院', level:'醫學中心', city:'花蓮縣', address:'花蓮市中央路三段707號', phone:'03-8561825', website:'https://www.tzuchi.com.tw', status:'潛在客戶', lat:23.9731, lng:121.5893 },
+];
+
+// ── 設定 ──
+const LEVEL_COLORS = {
+  '醫學中心': '#ef4444',
+  '區域醫院': '#f97316',
+  '地區醫院': '#eab308',
+  '診所': '#3b82f6',
+  '衛生所': '#22d3ee',
+  '合作廠商': '#a78bfa',
+};
+
+const STATUS_COLORS = {
+  '已部署': '#22c55e',
+  '維護中': '#3b82f6',
+  '洽談中': '#f97316',
+  '潛在客戶': '#475569',
+  '暫停': '#ef4444',
+};
+
+const STATUS_BG = {
+  '已部署': 'rgba(34,197,94,0.15)',
+  '維護中': 'rgba(59,130,246,0.15)',
+  '洽談中': 'rgba(249,115,22,0.15)',
+  '潛在客戶': 'rgba(71,85,105,0.15)',
+};
+
+// ── State ──
+let map, heatmap, markers = [], infoWindow;
+let currentFilter = 'all';
+let currentMode = 'marker';
+let selectedIdx = -1;
+
+// ── Map Init ──
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 23.8, lng: 121.0 },
+    zoom: 7,
+    mapTypeId: 'roadmap',
+    styles: darkMapStyle(),
+    disableDefaultUI: false,
+    zoomControl: true,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true,
+    gestureHandling: 'greedy',
+  });
+
+  infoWindow = new google.maps.InfoWindow({ maxWidth: 280 });
+
+  createMarkers();
+  createHeatmap();
+  renderList();
+  updateStats();
+
+  // 隱藏 loading
+  setTimeout(() => {
+    document.getElementById('loadingText').textContent = '地圖載入完成';
+    setTimeout(() => {
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }, 300);
+  }, 800);
+}
+
+// ── Marker 建立 ──
+function createMarkers() {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+
+  HOSPITALS.forEach((h, i) => {
+    const color = h.status === '已部署' || h.status === '維護中'
+      ? STATUS_COLORS[h.status]
+      : LEVEL_COLORS[h.level] || '#64748b';
+
+    const marker = new google.maps.Marker({
+      position: { lat: h.lat, lng: h.lng },
+      map: currentMode === 'marker' ? map : null,
+      title: h.name,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: h.level === '醫學中心' ? 9 : h.level === '區域醫院' ? 7 : 5,
+        fillColor: color,
+        fillOpacity: 0.95,
+        strokeColor: '#ffffff',
+        strokeWeight: 1.5,
+      },
+      zIndex: h.level === '醫學中心' ? 10 : 5,
+    });
+
+    marker.addListener('click', () => selectHospital(i));
+    markers.push(marker);
+  });
+}
+
+// ── Heatmap ──
+function createHeatmap() {
+  const points = HOSPITALS.map(h => ({
+    location: new google.maps.LatLng(h.lat, h.lng),
+    weight: h.level === '醫學中心' ? 3 : h.level === '區域醫院' ? 2 : 1,
+  }));
+
+  heatmap = new google.maps.visualization.HeatmapLayer({
+    data: points,
+    map: null,
+    radius: 40,
+    opacity: 0.8,
+    gradient: [
+      'rgba(0,0,0,0)',
+      'rgba(14,107,122,0.4)',
+      'rgba(20,184,166,0.7)',
+      'rgba(250,204,21,0.85)',
+      'rgba(239,68,68,1)',
+    ],
+  });
+}
+
+// ── 篩選 ──
+function filterLevel(level) {
+  currentFilter = level;
+
+  // 更新按鈕
+  ['all','center','region','district'].forEach(id => {
+    document.getElementById('btn-' + id)?.classList.remove('active');
+  });
+
+  const btnMap = { all:'btn-all', '醫學中心':'btn-center', '區域醫院':'btn-region', '地區醫院':'btn-district' };
+  document.getElementById(btnMap[level] || 'btn-all')?.classList.add('active');
+
+  // 更新標記可見性
+  HOSPITALS.forEach((h, i) => {
+    const visible = level === 'all' || h.level === level;
+    markers[i]?.setVisible(visible && currentMode === 'marker');
+  });
+
+  renderList();
+  updateStats();
+  infoWindow.close();
+}
+
+// ── 模式切換 ──
+function setMode(mode) {
+  currentMode = mode;
+
+  document.getElementById('mode-marker').classList.toggle('active', mode === 'marker');
+  document.getElementById('mode-heat').classList.toggle('active', mode === 'heat');
+
+  if (mode === 'marker') {
+    heatmap.setMap(null);
+    HOSPITALS.forEach((h, i) => {
+      const visible = currentFilter === 'all' || h.level === currentFilter;
+      markers[i]?.setMap(visible ? map : null);
+    });
+  } else {
+    markers.forEach(m => m.setMap(null));
+    heatmap.setMap(map);
+    infoWindow.close();
+  }
+}
+
+// ── 選取醫院 ──
+function selectHospital(idx) {
+  selectedIdx = idx;
+  const h = HOSPITALS[idx];
+
+  // 更新 sidebar
+  document.querySelectorAll('.hosp-card').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+  });
+
+  // 滾動到對應卡片
+  const card = document.querySelectorAll('.hosp-card')[idx];
+  card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Info panel
+  const statusColor = STATUS_COLORS[h.status] || '#64748b';
+  const statusBg = STATUS_BG[h.status] || 'rgba(71,85,105,0.15)';
+  const levelColor = LEVEL_COLORS[h.level] || '#64748b';
+
+  document.getElementById('infoPanel').classList.remove('empty');
+  document.getElementById('infoPanel').innerHTML = `
+    <div class="info-name">${h.name}</div>
+    <div class="info-row">
+      <div class="info-key">層級</div>
+      <div class="info-val"><span style="color:${levelColor};font-weight:600">${h.level}</span></div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">縣市</div>
+      <div class="info-val">${h.city}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">地址</div>
+      <div class="info-val">${h.address}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">電話</div>
+      <div class="info-val">${h.phone}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">網站</div>
+      <div class="info-val"><a href="${h.website}" target="_blank">官方網站 ↗</a></div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">狀態</div>
+      <div class="info-val">
+        <span style="background:${statusBg};color:${statusColor};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${h.status}</span>
+      </div>
+    </div>
+  `;
+
+  // InfoWindow
+  if (currentMode === 'marker') {
+    const iwContent = `
+      <div class="iw-content">
+        <div class="iw-name">${h.name}</div>
+        <div class="iw-row">📍<span>${h.address}</span></div>
+        <div class="iw-row">📞<span>${h.phone}</span></div>
+        <div class="iw-row">🏷<span>${h.level}</span></div>
+        <div class="iw-status" style="background:${statusBg};color:${statusColor}">${h.status}</div>
+      </div>`;
+
+    infoWindow.setContent(iwContent);
+    infoWindow.open(map, markers[idx]);
+    map.panTo({ lat: h.lat, lng: h.lng });
+  }
+}
+
+// ── 列表渲染 ──
+function renderList() {
+  const list = document.getElementById('sideList');
+  const visible = HOSPITALS.filter((h, i) =>
+    currentFilter === 'all' || h.level === currentFilter
+  );
+
+  document.getElementById('list-count').textContent = visible.length;
+
+  list.innerHTML = HOSPITALS.map((h, i) => {
+    if (currentFilter !== 'all' && h.level !== currentFilter) return '';
+    const levelColor = LEVEL_COLORS[h.level] || '#64748b';
+    const statusColor = STATUS_COLORS[h.status] || '#64748b';
+    const statusBg = STATUS_BG[h.status] || 'rgba(71,85,105,0.15)';
+    return `
+      <div class="hosp-card ${selectedIdx === i ? 'selected' : ''}" onclick="selectHospital(${i})">
+        <div class="hosp-card-top">
+          <div class="hosp-level-dot" style="background:${levelColor}"></div>
+          <div class="hosp-name">${h.name}</div>
+        </div>
+        <div class="hosp-meta">
+          <span class="hosp-city">${h.city}</span>
+          <span class="tag-sm" style="background:${statusBg};color:${statusColor}">${h.status}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 統計更新 ──
+function updateStats() {
+  const visible = HOSPITALS.filter(h => currentFilter === 'all' || h.level === currentFilter);
+  const deployed = visible.filter(h => h.status === '已部署' || h.status === '維護中').length;
+  document.getElementById('stat-total').textContent = visible.length;
+  document.getElementById('stat-deployed').textContent = deployed;
+}
+
+// ── 深色地圖樣式 ──
+function darkMapStyle() {
+  return [
+    { elementType:'geometry', stylers:[{color:'#0a1628'}] },
+    { elementType:'labels.text.fill', stylers:[{color:'#4a6fa5'}] },
+    { elementType:'labels.text.stroke', stylers:[{color:'#06101f'}] },
+    { featureType:'administrative', elementType:'geometry', stylers:[{color:'#1e3048'}] },
+    { featureType:'administrative.country', elementType:'labels.text.fill', stylers:[{color:'#6b93c4'}] },
+    { featureType:'administrative.locality', elementType:'labels.text.fill', stylers:[{color:'#c4d4e8'}] },
+    { featureType:'poi', stylers:[{visibility:'off'}] },
+    { featureType:'road', elementType:'geometry', stylers:[{color:'#132036'}] },
+    { featureType:'road', elementType:'geometry.stroke', stylers:[{color:'#0a1628'}] },
+    { featureType:'road', elementType:'labels.text.fill', stylers:[{color:'#3d6080'}] },
+    { featureType:'road.highway', elementType:'geometry', stylers:[{color:'#1e3a5f'}] },
+    { featureType:'transit', stylers:[{visibility:'off'}] },
+    { featureType:'water', elementType:'geometry', stylers:[{color:'#060e1c'}] },
+    { featureType:'water', elementType:'labels.text.fill', stylers:[{color:'#1e3a5f'}] },
+  ];
+}
+</script>
+
+<!-- Google Maps API with Visualization library -->
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAnwSvM0r3ZYdIsCTQ0Cq2Qjm3zcO4L2UM&libraries=visualization&callback=initMap" async defer></script>
+
+</body>
+</html>
